@@ -302,6 +302,16 @@ koneksi realtime-backup watcher stop --email user@example.com
 koneksi realtime-backup path remove --email user@example.com
 ```
 
+#### Verify Backups
+
+```bash
+# List root directory content
+koneksi directory read --email user@example.com
+
+# List specific directory content
+koneksi directory read --directory-id 6899f1bbdafb251035d62d67 --email user@example.com
+```
+
 #### Recovery Operations
 
 ```bash
