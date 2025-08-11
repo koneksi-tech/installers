@@ -7,11 +7,10 @@
   - [Amazon Linux](#amazon-linux)
   - [macOS](#macos)
   - [Windows Server 2025](#windows-server-2025)
-- [Running Koneksi](#running-koneksi)
-- [Configuration](#configuration)
-- [Troubleshooting](#troubleshooting)
 - [Developer Guide](#developer-guide)
   - [CLI Command Examples](#cli-command-examples)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -96,9 +95,99 @@
 
 ---
 
-## Running Koneksi
+## Developer Guide
 
-### Basic Commands
+### CLI Command Examples
+
+The Koneksi CLI provides various commands for interacting with the engine and managing operations.
+
+#### Basic Commands
+
+```bash
+# Check version
+koneksi --version
+
+# Display help
+koneksi --help
+
+# Health check
+koneksi health
+```
+
+#### Authentication
+
+```bash
+# Login with credentials
+koneksi auth login --password yourpassword --email user@example.com
+
+# Logout
+koneksi auth revoke-token --token access_token --email user@example.com
+```
+
+#### Backup Operations
+
+```bash
+# Upload file
+koneksi file upload --file-path /path/to/file.txt --email user@example.com
+
+# Upload directory
+koneksi directory upload --path /path/to/directory --email user@example.com
+```
+
+#### Real-time Backup Operations
+
+```bash
+# Add realtime backup location
+koneksi realtime-backup path add --path /path/to/directory --email user@example.com
+
+# Verify current backup location
+koneksi realtime-backup path read --email user@example.com
+
+# Start initial backup
+koneksi realtime-backup realtime start --email user@example.com
+
+# Start watcher to detect backup location changes
+koneksi realtime-backup watcher start --email user@example.com
+
+# List realtime backup queue
+koneksi realtime-backup queues read --email user@example.com
+
+# Stop watcher to disable backup location changes detection
+koneksi realtime-backup watcher stop --email user@example.com
+
+# Remove realtime backup location
+koneksi realtime-backup path remove --email user@example.com
+```
+
+#### Verify Backups
+
+```bash
+# List root directory content
+koneksi directory read --email user@example.com
+
+# List specific directory content
+koneksi directory read --directory-id 6899f1bbdafb251035d62d67 --email user@example.com
+```
+
+#### Recovery Operations
+
+```bash
+# Create recovery request (will start the initial recovery queue process)
+koneksi recovery request --path /path/to/recovery-path --scope full --email user@example.com
+
+# List recovery requests
+koneksi recovery list --email user@example.com
+
+# List recovery request queue items
+koneksi recovery list-queue --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
+
+# Process recovery queue (for retry)
+koneksi recovery process-queue --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
+
+# Delete recovery request (including the recovery queue items)
+koneksi recovery delete --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
+
+```
 
 **Manual Start both services:**
 
@@ -234,102 +323,6 @@ eventvwr.msc
 
 # Run in console mode for debugging
 koneksi-engine\koneksi.exe
-```
-
----
-
-## Developer Guide
-
-### CLI Command Examples
-
-The Koneksi CLI provides various commands for interacting with the engine and managing operations.
-
-#### Basic Commands
-
-```bash
-# Check version
-koneksi --version
-
-# Display help
-koneksi --help
-
-# Health check
-koneksi health
-```
-
-#### Authentication
-
-```bash
-# Login with credentials
-koneksi auth login --password yourpassword --email user@example.com
-
-# Logout
-koneksi auth revoke-token --token access_token --email user@example.com
-```
-
-#### Backup Operations
-
-```bash
-# Upload file
-koneksi file upload --file-path /path/to/file.txt --email user@example.com
-
-# Upload directory
-koneksi directory upload --path /path/to/directory --email user@example.com
-```
-
-#### Real-time Backup Operations
-
-```bash
-# Add realtime backup location
-koneksi realtime-backup path add --path /path/to/directory --email user@example.com
-
-# Verify current backup location
-koneksi realtime-backup path read --email user@example.com
-
-# Start initial backup
-koneksi realtime-backup realtime start --email user@example.com
-
-# Start watcher to detect backup location changes
-koneksi realtime-backup watcher start --email user@example.com
-
-# List realtime backup queue
-koneksi realtime-backup queues read --email user@example.com
-
-# Stop watcher to disable backup location changes detection
-koneksi realtime-backup watcher stop --email user@example.com
-
-# Remove realtime backup location
-koneksi realtime-backup path remove --email user@example.com
-```
-
-#### Verify Backups
-
-```bash
-# List root directory content
-koneksi directory read --email user@example.com
-
-# List specific directory content
-koneksi directory read --directory-id 6899f1bbdafb251035d62d67 --email user@example.com
-```
-
-#### Recovery Operations
-
-```bash
-# Create recovery request (will start the initial recovery queue process)
-koneksi recovery request --path /path/to/recovery-path --scope full --email user@example.com
-
-# List recovery requests
-koneksi recovery list --email user@example.com
-
-# List recovery request queue items
-koneksi recovery list-queue --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
-
-# Process recovery queue (for retry)
-koneksi recovery process-queue --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
-
-# Delete recovery request (including the recovery queue items)
-koneksi recovery delete --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
-
 ```
 
 ---
