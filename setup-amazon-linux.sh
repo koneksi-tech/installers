@@ -86,7 +86,7 @@ install_koneksi() {
         cat > .env << EOF
 APP_KEY=1oUPOOVVhRoN3SwIdMG4VP6iABNOTmQE     # Secret key for internal authentication or encryption
 MODE=release                                 # Use 'debug' to display verbose logs
-API_URL=https://uat.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
+API_URL=https://uat.koneksi.co.kr            # URL of the gateway or central API the engine will communicate with
 RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
 UPLOAD_CONCURRENCY=1                         # Number of concurrent uploads
 UPLOAD_DELAY=100ms                           # Delay between uploads in milliseconds
@@ -182,151 +182,105 @@ run_koneksi() {
     fi
     
     echo ""
-    echo "Select how to run the services:"
-    echo "1) Run both in background (recommended for servers)"
-    echo "2) Run in foreground with output"
-    echo "3) Run in separate screen sessions (if screen is installed)"
-    echo "4) Cancel"
+    echo "About Koneksi Architecture:"
+    echo "• Engine: Core background service that processes backup & recovery tasks"
+    echo "• CLI: Command-line interface to control and communicate with the Engine"
     echo ""
-    read -p "Enter your choice [1-4]: " RUN_MODE
+    echo "The Engine runs continuously in the background, while you use the CLI"
+    echo "to send commands and manage your backup operations."
+    echo ""
+    read -p "Start Koneksi Engine as background service with auto-startup? (y/n): " START_ENGINE
     
-    case $RUN_MODE in
-        1)
-            echo "Starting Koneksi Engine in background..."
-            
-            # Kill any existing processes first
-            pkill -f "koneksi-engine/koneksi" 2>/dev/null || true
-            pkill -f "koneksi-cli/koneksi" 2>/dev/null || true
-            sleep 1
-            
-            cd koneksi-engine
-            nohup ./koneksi > koneksi-engine.log 2>&1 &
-            ENGINE_PID=$!
-            echo "Engine started with PID: $ENGINE_PID"
-            cd ..
-            
-            # Verify engine startup with health check
-            echo "Verifying engine startup..."
-            for i in {1..10}; do
-                if curl -s http://localhost:3080/check-health > /dev/null 2>&1; then
-                    echo "✓ Engine is running and responding to health checks"
-                    break
-                elif [ $i -eq 10 ]; then
-                    echo "⚠ Warning: Engine may not have started properly"
-                    echo "  Check logs: tail -f koneksi-engine/koneksi-engine.log"
-                else
-                    echo "  Waiting for engine to start... ($i/10)"
-                    sleep 2
-                fi
-            done
-            
-            echo "Starting Koneksi CLI in background..."
-            cd koneksi-cli
-            nohup ./koneksi > koneksi-cli.log 2>&1 &
-            CLI_PID=$!
-            echo "CLI started with PID: $CLI_PID"
-            cd ..
-            
-            echo ""
-            echo "Both services are running in background."
-            echo "Engine PID: $ENGINE_PID (log: koneksi-engine/koneksi-engine.log)"
-            echo "CLI PID: $CLI_PID (log: koneksi-cli/koneksi-cli.log)"
-            echo ""
-            echo "To stop the services, run:"
-            echo "  kill $ENGINE_PID $CLI_PID"
-            ;;
-            
-        2)
-            echo "Starting services in foreground..."
-            echo "Press Ctrl+C to stop both services"
-            echo ""
-            
-            # Function to handle cleanup
-            cleanup() {
-                echo ""
-                echo "Stopping services..."
-                kill $ENGINE_PID $CLI_PID 2>/dev/null
-                wait $ENGINE_PID $CLI_PID 2>/dev/null
-                echo "Services stopped."
-                exit 0
-            }
-            
-            # Set up trap for Ctrl+C
-            trap cleanup SIGINT
-            
-            echo "Starting Koneksi Engine..."
-            cd koneksi-engine && ./koneksi &
-            ENGINE_PID=$!
-            cd ..
-            
+    if [ "$START_ENGINE" != "y" ]; then
+        echo "Exiting..."
+        return 0
+    fi
+    
+    echo "Starting Koneksi Engine in background..."
+    cd koneksi-engine
+    
+    # Create a systemd service for auto-start
+    SERVICE_PATH="/etc/systemd/system/koneksi-engine.service"
+    ENGINE_PATH="$(pwd)/koneksi"
+    
+    echo "Creating systemd service for auto-start..."
+    sudo tee "$SERVICE_PATH" > /dev/null << EOF
+[Unit]
+Description=Koneksi Engine Service
+After=network.target
+
+[Service]
+Type=simple
+User=$(whoami)
+WorkingDirectory=$(pwd)
+ExecStart=$ENGINE_PATH
+Restart=always
+RestartSec=10
+StandardOutput=append:$(pwd)/koneksi-engine.log
+StandardError=append:$(pwd)/koneksi-engine.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Ensure clean systemd service setup
+    echo "Setting up systemd service..."
+    
+    # Stop and disable any existing service first
+    sudo systemctl stop koneksi-engine 2>/dev/null || true
+    sudo systemctl disable koneksi-engine 2>/dev/null || true
+    
+    # Reload systemd and enable the service
+    sudo systemctl daemon-reload
+    if sudo systemctl enable koneksi-engine 2>/dev/null; then
+        echo "Systemd service enabled successfully"
+    else
+        echo "Warning: Failed to enable systemd service"
+    fi
+    
+    # Start the service
+    if sudo systemctl start koneksi-engine 2>/dev/null; then
+        echo "Systemd service started successfully"
+    else
+        echo "Warning: Failed to start systemd service"
+    fi
+    
+    # Give the service a moment to start
+    sleep 2
+    
+    # Verify the engine is actually running
+    echo "Verifying engine startup..."
+    for i in {1..10}; do
+        if curl -s http://localhost:3080/check-health > /dev/null 2>&1; then
+            echo "✓ Engine is running and responding to health checks"
+            break
+        elif [ $i -eq 10 ]; then
+            echo "⚠ Warning: Engine may not have started properly"
+            echo "  Check logs: tail -f koneksi-engine/koneksi-engine.log"
+            echo "  Check service: sudo systemctl status koneksi-engine"
+        else
+            echo "  Waiting for engine to start... ($i/10)"
             sleep 2
-            
-            echo "Starting Koneksi CLI..."
-            cd koneksi-cli && ./koneksi &
-            CLI_PID=$!
-            cd ..
-            
-            echo ""
-            echo "Services are running. Press Ctrl+C to stop."
-            
-            # Wait for processes
-            wait $ENGINE_PID $CLI_PID
-            ;;
-            
-        3)
-            if ! command -v screen &> /dev/null; then
-                echo "Screen is not installed. Installing screen..."
-                if ! sudo yum install -y screen; then
-                    echo "Failed to install screen. Please install it manually."
-                    return 1
-                fi
-            fi
-            
-            # Kill any existing screen sessions
-            screen -X -S koneksi-engine quit 2>/dev/null || true
-            screen -X -S koneksi-cli quit 2>/dev/null || true
-            sleep 1
-            
-            echo "Starting Koneksi Engine in screen session..."
-            screen -dmS koneksi-engine bash -c "cd koneksi-engine && ./koneksi"
-            
-            # Verify engine startup with health check
-            echo "Verifying engine startup..."
-            for i in {1..10}; do
-                if curl -s http://localhost:3080/check-health > /dev/null 2>&1; then
-                    echo "✓ Engine is running and responding to health checks"
-                    break
-                elif [ $i -eq 10 ]; then
-                    echo "⚠ Warning: Engine may not have started properly"
-                    echo "  Check logs: screen -r koneksi-engine"
-                else
-                    echo "  Waiting for engine to start... ($i/10)"
-                    sleep 2
-                fi
-            done
-            
-            echo "Starting Koneksi CLI in screen session..."
-            screen -dmS koneksi-cli bash -c "cd koneksi-cli && ./koneksi"
-            
-            echo ""
-            echo "Services are running in screen sessions."
-            echo "To view Engine output: screen -r koneksi-engine"
-            echo "To view CLI output: screen -r koneksi-cli"
-            echo "To detach from screen: Ctrl+A, then D"
-            echo "To list sessions: screen -ls"
-            echo "To stop a service: screen -X -S [session-name] quit"
-            ;;
-            
-        4)
-            echo "Cancelled."
-            return 0
-            ;;
-            
-        *)
-            echo "Invalid choice."
-            return 1
-            ;;
-    esac
+        fi
+    done
+    
+    cd ..
+    
+    echo ""
+    echo "Koneksi Engine is now running as a systemd service."
+    echo "It will automatically start when the machine boots up."
+    echo ""
+    echo "Log file: koneksi-engine/koneksi-engine.log"
+    echo ""
+    echo "To view logs:"
+    echo "  tail -f koneksi-engine/koneksi-engine.log"
+    echo "  sudo journalctl -u koneksi-engine -f"
+    echo ""
+    echo "To stop the service:"
+    echo "  sudo systemctl stop koneksi-engine"
+    echo ""
+    echo "To disable auto-start:"
+    echo "  sudo systemctl disable koneksi-engine"
 }
 
 # Function to check system requirements

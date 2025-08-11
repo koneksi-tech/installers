@@ -239,174 +239,92 @@ function Start-Koneksi {
     }
     
     Write-Host ""
-    Write-Host "Select how to run the services:" -ForegroundColor Yellow
-    Write-Host "1) Run both in separate console windows"
-    Write-Host "2) Run both in background (hidden)"
-    Write-Host "3) Run in Windows Terminal tabs (if installed)"
-    Write-Host "4) Run as scheduled tasks"
-    Write-Host "5) Cancel"
+    Write-Host "About Koneksi Architecture:" -ForegroundColor Cyan
+    Write-Host "• Engine: Core background service that processes backup & recovery tasks"
+    Write-Host "• CLI: Command-line interface to control and communicate with the Engine"
     Write-Host ""
-    $runMode = Read-Host "Enter your choice [1-5]"
+    Write-Host "The Engine runs continuously in the background, while you use the CLI"
+    Write-Host "to send commands and manage your backup operations."
+    Write-Host ""
+    $startEngine = Read-Host "Start Koneksi Engine as background service with auto-startup? (y/n)"
     
-    switch ($runMode) {
-        "1" {
-            Write-Host "Starting Koneksi services..."
-            
-            # Kill any existing processes first
-            Get-Process -Name "koneksi" -ErrorAction SilentlyContinue | Stop-Process -Force
-            Start-Sleep -Seconds 1
-            
-            Write-Host "Starting Koneksi Engine in new console window..."
-            $enginePath = Join-Path (Get-Location) "koneksi-engine"
-            Start-Process cmd -ArgumentList "/k", "cd /d `"$enginePath`" && echo Running Koneksi Engine... && koneksi.exe" -WindowStyle Normal
-            
-            # Verify engine startup with health check
-            Write-Host "Verifying engine startup..." -ForegroundColor Yellow
-            for ($i = 1; $i -le 10; $i++) {
-                Start-Sleep -Seconds 2
-                try {
-                    $response = Invoke-RestMethod -Uri "http://localhost:3080/check-health" -Method GET -TimeoutSec 5 -ErrorAction Stop
-                    Write-Host "✓ Engine is running and responding to health checks" -ForegroundColor Green
-                    break
-                }
-                catch {
-                    if ($i -eq 10) {
-                        Write-Host "⚠ Warning: Engine may not have started properly" -ForegroundColor Yellow
-                        Write-Host "  Check the Engine console window for errors" -ForegroundColor Gray
-                    }
-                    else {
-                        Write-Host "  Waiting for engine to start... ($i/10)" -ForegroundColor Gray
-                    }
-                }
-            }
-            
-            Write-Host "Starting Koneksi CLI in new console window..."
-            $cliPath = Join-Path (Get-Location) "koneksi-cli"
-            Start-Process cmd -ArgumentList "/k", "cd /d `"$cliPath`" && echo Running Koneksi CLI... && koneksi.exe" -WindowStyle Normal
-            
-            Write-Host ""
-            Write-Host "Both services are running in separate console windows." -ForegroundColor Green
+    if ($startEngine -ne 'y') {
+        Write-Host "Exiting..." -ForegroundColor Yellow
+        return
+    }
+    
+    Write-Host "Starting Koneksi Engine in background..." -ForegroundColor Green
+    
+    # Kill any existing processes first
+    Get-Process -Name "koneksi" -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 1
+    
+    # Create scheduled task for auto-startup
+    Write-Host "Creating scheduled task for auto-startup..."
+    $enginePath = Join-Path (Get-Location) "koneksi-engine\koneksi.exe"
+    $engineWorkDir = Join-Path (Get-Location) "koneksi-engine"
+    
+    # Remove any existing task first
+    Unregister-ScheduledTask -TaskName "KoneksiEngine" -Confirm:$false -ErrorAction SilentlyContinue
+    
+    # Create Engine task
+    $engineAction = New-ScheduledTaskAction -Execute $enginePath -WorkingDirectory $engineWorkDir
+    $engineTrigger = New-ScheduledTaskTrigger -AtStartup
+    $engineSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+    
+    try {
+        Register-ScheduledTask -TaskName "KoneksiEngine" -Action $engineAction -Trigger $engineTrigger -Settings $engineSettings -Description "Koneksi Engine Service" -Force | Out-Null
+        Write-Host "Scheduled task created successfully" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Warning: Failed to create scheduled task" -ForegroundColor Yellow
+        Write-Host $_.Exception.Message -ForegroundColor Gray
+    }
+    
+    # Start the task now
+    try {
+        Start-ScheduledTask -TaskName "KoneksiEngine"
+        Write-Host "Scheduled task started successfully" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Warning: Failed to start scheduled task" -ForegroundColor Yellow
+        Write-Host $_.Exception.Message -ForegroundColor Gray
+    }
+    
+    # Give the service a moment to start
+    Start-Sleep -Seconds 2
+    
+    # Verify engine startup with health check
+    Write-Host "Verifying engine startup..." -ForegroundColor Yellow
+    for ($i = 1; $i -le 10; $i++) {
+        Start-Sleep -Seconds 2
+        try {
+            $response = Invoke-RestMethod -Uri "http://localhost:3080/check-health" -Method GET -TimeoutSec 5 -ErrorAction Stop
+            Write-Host "✓ Engine is running and responding to health checks" -ForegroundColor Green
+            break
         }
-        
-        "2" {
-            Write-Host "Starting services in background..."
-            
-            # Kill any existing processes first
-            Get-Process -Name "koneksi" -ErrorAction SilentlyContinue | Stop-Process -Force
-            Start-Sleep -Seconds 1
-            
-            Write-Host "Starting Koneksi Engine in background..."
-            $enginePath = Join-Path (Get-Location) "koneksi-engine\koneksi.exe"
-            $engineWorkDir = Join-Path (Get-Location) "koneksi-engine"
-            $engineProcess = Start-Process -FilePath $enginePath -WorkingDirectory $engineWorkDir -WindowStyle Hidden -PassThru
-            Write-Host "Engine started with PID: $($engineProcess.Id)" -ForegroundColor Green
-            
-            # Verify engine startup with health check
-            Write-Host "Verifying engine startup..." -ForegroundColor Yellow
-            for ($i = 1; $i -le 10; $i++) {
-                Start-Sleep -Seconds 2
-                try {
-                    $response = Invoke-RestMethod -Uri "http://localhost:3080/check-health" -Method GET -TimeoutSec 5 -ErrorAction Stop
-                    Write-Host "✓ Engine is running and responding to health checks" -ForegroundColor Green
-                    break
-                }
-                catch {
-                    if ($i -eq 10) {
-                        Write-Host "⚠ Warning: Engine may not have started properly" -ForegroundColor Yellow
-                        Write-Host "  Check process: Get-Process -Id $($engineProcess.Id)" -ForegroundColor Gray
-                    }
-                    else {
-                        Write-Host "  Waiting for engine to start... ($i/10)" -ForegroundColor Gray
-                    }
-                }
-            }
-            
-            Write-Host "Starting Koneksi CLI in background..."
-            $cliPath = Join-Path (Get-Location) "koneksi-cli\koneksi.exe"
-            $cliWorkDir = Join-Path (Get-Location) "koneksi-cli"
-            $cliProcess = Start-Process -FilePath $cliPath -WorkingDirectory $cliWorkDir -WindowStyle Hidden -PassThru
-            Write-Host "CLI started with PID: $($cliProcess.Id)" -ForegroundColor Green
-            
-            Write-Host ""
-            Write-Host "Both services are running in background." -ForegroundColor Green
-            Write-Host "To stop the services, use Task Manager or run:" -ForegroundColor Yellow
-            Write-Host "  Stop-Process -Id $($engineProcess.Id), $($cliProcess.Id)" -ForegroundColor White
-        }
-        
-        "3" {
-            # Check if Windows Terminal is installed
-            $wtInstalled = Get-Command wt -ErrorAction SilentlyContinue
-            
-            if ($wtInstalled) {
-                Write-Host "Starting services in Windows Terminal tabs..."
-                
-                $enginePath = Join-Path (Get-Location) "koneksi-engine"
-                $cliPath = Join-Path (Get-Location) "koneksi-cli"
-                
-                # Start Windows Terminal with two tabs
-                $wtCommand = "new-tab -d `"$enginePath`" cmd /k `"echo Running Koneksi Engine... && koneksi.exe`" ; new-tab -d `"$cliPath`" cmd /k `"echo Running Koneksi CLI... && koneksi.exe`""
-                Start-Process wt -ArgumentList $wtCommand
-                
-                Write-Host "Services are running in Windows Terminal tabs." -ForegroundColor Green
+        catch {
+            if ($i -eq 10) {
+                Write-Host "⚠ Warning: Engine may not have started properly" -ForegroundColor Yellow
+                Write-Host "  Check task status: Get-ScheduledTask -TaskName 'KoneksiEngine'" -ForegroundColor Gray
             }
             else {
-                Write-Host "Windows Terminal is not installed." -ForegroundColor Red
-                Write-Host "Install it from Microsoft Store or use another option." -ForegroundColor Yellow
+                Write-Host "  Waiting for engine to start... ($i/10)" -ForegroundColor Gray
             }
-        }
-        
-        "4" {
-            if (-not (Test-Administrator)) {
-                Write-Host "Administrator privileges required to create scheduled tasks." -ForegroundColor Red
-                Write-Host "Please run this script as Administrator." -ForegroundColor Yellow
-                return
-            }
-            
-            Write-Host "Creating scheduled tasks..."
-            
-            $enginePath = Join-Path (Get-Location) "koneksi-engine\koneksi.exe"
-            $engineWorkDir = Join-Path (Get-Location) "koneksi-engine"
-            $cliPath = Join-Path (Get-Location) "koneksi-cli\koneksi.exe"
-            $cliWorkDir = Join-Path (Get-Location) "koneksi-cli"
-            
-            # Create Engine task
-            $engineAction = New-ScheduledTaskAction -Execute $enginePath -WorkingDirectory $engineWorkDir
-            $engineTrigger = New-ScheduledTaskTrigger -AtStartup
-            $engineSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-            
-            Register-ScheduledTask -TaskName "KoneksiEngine" -Action $engineAction -Trigger $engineTrigger -Settings $engineSettings -Description "Koneksi Engine Service" -Force
-            
-            # Create CLI task
-            $cliAction = New-ScheduledTaskAction -Execute $cliPath -WorkingDirectory $cliWorkDir
-            $cliTrigger = New-ScheduledTaskTrigger -AtStartup
-            $cliSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-            
-            Register-ScheduledTask -TaskName "KoneksiCLI" -Action $cliAction -Trigger $cliTrigger -Settings $cliSettings -Description "Koneksi CLI Service" -Force
-            
-            Write-Host "Scheduled tasks created successfully!" -ForegroundColor Green
-            
-            $startNow = Read-Host "Do you want to start the tasks now? (y/n)"
-            if ($startNow -eq 'y') {
-                Start-ScheduledTask -TaskName "KoneksiEngine"
-                Start-ScheduledTask -TaskName "KoneksiCLI"
-                Write-Host "Tasks started successfully!" -ForegroundColor Green
-            }
-            
-            Write-Host ""
-            Write-Host "Task management commands:" -ForegroundColor Yellow
-            Write-Host "  Start: Start-ScheduledTask -TaskName 'KoneksiEngine'" -ForegroundColor White
-            Write-Host "  Stop:  Stop-ScheduledTask -TaskName 'KoneksiEngine'" -ForegroundColor White
-            Write-Host "  Status: Get-ScheduledTask -TaskName 'Koneksi*'" -ForegroundColor White
-        }
-        
-        "5" {
-            Write-Host "Cancelled." -ForegroundColor Yellow
-        }
-        
-        default {
-            Write-Host "Invalid choice." -ForegroundColor Red
         }
     }
+    
+    Write-Host ""
+    Write-Host "Koneksi Engine is now running as a scheduled task." -ForegroundColor Green
+    Write-Host "It will automatically start when the machine boots up." -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Log file: koneksi-engine\koneksi-engine.log (if available)" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Task management commands:" -ForegroundColor Yellow
+    Write-Host "  Status: Get-ScheduledTask -TaskName 'KoneksiEngine'" -ForegroundColor White
+    Write-Host "  Stop:   Stop-ScheduledTask -TaskName 'KoneksiEngine'" -ForegroundColor White
+    Write-Host "  Start:  Start-ScheduledTask -TaskName 'KoneksiEngine'" -ForegroundColor White
+    Write-Host "  Remove: Unregister-ScheduledTask -TaskName 'KoneksiEngine'" -ForegroundColor White
 }
 
 # Function to configure Windows Service
