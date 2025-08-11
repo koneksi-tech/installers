@@ -205,83 +205,80 @@ if not exist "koneksi-cli\koneksi.exe" (
 )
 
 echo.
-echo About Koneksi Architecture:
-echo • Engine: Core background service that processes backup ^& recovery tasks
-echo • CLI: Command-line interface to control and communicate with the Engine
+echo Select how to run the services:
+echo 1) Run both in separate console windows
+echo 2) Run both in this console ^(Ctrl+C to stop^)
+echo 3) Run with logging to files
+echo 4) Cancel
 echo.
-echo The Engine runs continuously in the background, while you use the CLI
-echo to send commands and manage your backup operations.
-echo.
-set /p START_ENGINE="Start Koneksi Engine as background service with auto-startup? (y/n): "
+set /p RUN_MODE="Enter your choice [1-4]: "
 
-if /i not "%START_ENGINE%"=="y" (
-    echo Exiting...
-    pause
-    goto MAIN_MENU
-)
+if "%RUN_MODE%"=="1" goto RUN_SEPARATE
+if "%RUN_MODE%"=="2" goto RUN_FOREGROUND
+if "%RUN_MODE%"=="3" goto RUN_WITH_LOGS
+if "%RUN_MODE%"=="4" goto MAIN_MENU
+echo Invalid option.
+goto RUN
 
-echo Starting Koneksi Engine in background...
+:RUN_SEPARATE
+echo Starting Koneksi Engine in new console window...
+start "Koneksi Engine" /D "%CD%\koneksi-engine" cmd /k "echo Running Koneksi Engine... && koneksi.exe"
 
-:: Kill any existing processes first
-taskkill /f /im koneksi.exe >nul 2>&1
-timeout /t 1 /nobreak >nul
-
-:: Create scheduled task for auto-startup
-echo Creating scheduled task for auto-startup...
-set ENGINE_PATH=%CD%\koneksi-engine\koneksi.exe
-set ENGINE_WORKDIR=%CD%\koneksi-engine
-
-:: Remove any existing task first
-schtasks /delete /tn "KoneksiEngine" /f >nul 2>&1
-
-:: Create new scheduled task
-schtasks /create /tn "KoneksiEngine" /tr "\"%ENGINE_PATH%\"" /sc onstart /ru SYSTEM /rl highest /f >nul 2>&1
-if !errorlevel!==0 (
-    echo Scheduled task created successfully
-) else (
-    echo Warning: Failed to create scheduled task
-)
-
-:: Start the task now
-schtasks /run /tn "KoneksiEngine" >nul 2>&1
-if !errorlevel!==0 (
-    echo Scheduled task started successfully
-) else (
-    echo Warning: Failed to start scheduled task
-)
-
-:: Give the service a moment to start
 timeout /t 2 /nobreak >nul
 
-:: Verify engine startup with health check
-echo Verifying engine startup...
-for /l %%i in (1,1,10) do (
-    timeout /t 2 /nobreak >nul
-    curl -s http://localhost:3080/check-health >nul 2>&1
-    if !errorlevel!==0 (
-        echo ✓ Engine is running and responding to health checks
-        goto ENGINE_READY
-    )
-    echo   Waiting for engine to start... (%%i/10)
-)
-echo ⚠ Warning: Engine may not have started properly
-echo   Check task status: schtasks /query /tn "KoneksiEngine"
+echo Starting Koneksi CLI in new console window...
+start "Koneksi CLI" /D "%CD%\koneksi-cli" cmd /k "echo Running Koneksi CLI... && koneksi.exe"
 
-:ENGINE_READY
 echo.
-echo Koneksi Engine is now running as a scheduled task.
-echo It will automatically start when the machine boots up.
+echo Both services are running in separate console windows.
+pause
+goto MAIN_MENU
+
+:RUN_FOREGROUND
+echo Starting services in current console...
+echo Press Ctrl+C to stop both services
 echo.
-echo Log file: koneksi-engine\koneksi-engine.log ^(if available^)
+
+echo Starting Koneksi Engine...
+cd koneksi-engine
+start /b koneksi.exe
+cd ..
+
+timeout /t 2 /nobreak >nul
+
+echo Starting Koneksi CLI...
+cd koneksi-cli
+start /b koneksi.exe
+cd ..
+
 echo.
-echo To view task status:
-echo   schtasks /query /tn "KoneksiEngine"
+echo Services are running. Press Ctrl+C to stop.
+pause >nul
+goto MAIN_MENU
+
+:RUN_WITH_LOGS
+echo Starting services with logging...
+
+:: Create logs directory
+if not exist "logs" mkdir logs
+
+echo Starting Koneksi Engine with logging...
+start "Koneksi Engine" /D "%CD%\koneksi-engine" /MIN cmd /c "koneksi.exe > ..\logs\engine.log 2>&1"
+
+timeout /t 2 /nobreak >nul
+
+echo Starting Koneksi CLI with logging...
+start "Koneksi CLI" /D "%CD%\koneksi-cli" /MIN cmd /c "koneksi.exe > ..\logs\cli.log 2>&1"
+
 echo.
-echo To stop the service:
-echo   schtasks /end /tn "KoneksiEngine"
+echo Services are running in minimized windows with logging.
+echo Log files:
+echo   Engine: logs\engine.log
+echo   CLI:    logs\cli.log
 echo.
-echo To disable auto-start:
-echo   schtasks /delete /tn "KoneksiEngine"
+echo To view logs in real-time, use:
+echo   type logs\engine.log
+echo   type logs\cli.log
 pause
 goto MAIN_MENU
 
@@ -307,11 +304,10 @@ if %errorlevel%==0 (
     echo Warning: This script is optimized for Windows 10/Server 2016 or later
 )
 
-:: Check if curl exists (required for downloads and health checks)
+:: Check if curl exists
 where curl >nul 2>&1
 if %errorlevel% neq 0 (
     echo Error: curl is not installed or not in PATH
-    echo curl is required for downloading binaries and verifying engine health.
     echo Please install curl or use Windows 10/Server 2016 or later
     exit /b 1
 )
