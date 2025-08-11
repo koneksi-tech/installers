@@ -105,7 +105,7 @@ function Install-Koneksi {
             $envContent = @"
 APP_KEY=1oUPOOVVhRoN3SwIdMG4VP6iABNOTmQE     # Secret key for internal authentication or encryption
 MODE=release                                 # Use 'debug' to display verbose logs
-API_URL=https://staging.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
+API_URL=https://uat.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
 RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
 UPLOAD_CONCURRENCY=1                         # Number of concurrent uploads
 UPLOAD_DELAY=100ms                           # Delay between uploads in milliseconds

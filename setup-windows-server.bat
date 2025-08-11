@@ -100,7 +100,7 @@ echo Creating .env configuration file...
 (
 echo APP_KEY=1oUPOOVVhRoN3SwIdMG4VP6iABNOTmQE     # Secret key for internal authentication or encryption
 echo MODE=release                                 # Use 'debug' to display verbose logs
-echo API_URL=https://staging.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
+echo API_URL=https://uat.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
 echo RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
 echo UPLOAD_CONCURRENCY=1                         # Number of concurrent uploads
 echo UPLOAD_DELAY=100ms                           # Delay between uploads in milliseconds
