@@ -86,10 +86,12 @@ install_koneksi() {
         else
             echo "Updating Koneksi Engine..."
             rm -f "$ENGINE_FINAL_NAME"
+            # Continue with installation below
         fi
     fi
     
-    if [ ! -f "$ENGINE_FINAL_NAME" ]; then
+    # Only install if we're still in the engine directory and binary doesn't exist
+    if [ "$(basename $(pwd))" = "koneksi-engine" ] && [ ! -f "$ENGINE_FINAL_NAME" ]; then
         # Create the .env file for the Koneksi Engine binary
         echo "Creating .env configuration file..."
         cat > .env << EOF
@@ -139,10 +141,12 @@ EOF
         else
             echo "Updating Koneksi CLI..."
             rm -f "$CLI_FINAL_NAME"
+            # Continue with installation below
         fi
     fi
     
-    if [ ! -f "$CLI_FINAL_NAME" ]; then
+    # Only install if we're still in the CLI directory and binary doesn't exist
+    if [ "$(basename $(pwd))" = "koneksi-cli" ] && [ ! -f "$CLI_FINAL_NAME" ]; then
         echo "Downloading Koneksi CLI binary..."
         if ! curl -LO "$CLI_REPO_URL/$CLI_LATEST_RELEASE/$CLI_BINARY_FILENAME"; then
             echo "Error: Failed to download CLI binary"
@@ -246,9 +250,37 @@ run_koneksi() {
 </plist>
 EOF
     
-    # Load the launch agent
-    launchctl load "$PLIST_PATH" 2>/dev/null || true
-    launchctl start com.koneksi.engine 2>/dev/null || true
+    # Ensure clean launch agent setup
+    echo "Setting up launch agent..."
+    
+    # Stop and unload any existing launch agent first
+    launchctl stop com.koneksi.engine 2>/dev/null || true
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+    
+    # Load and start the launch agent
+    if launchctl load "$PLIST_PATH" 2>/dev/null; then
+        echo "Launch agent loaded successfully"
+    else
+        echo "Warning: Failed to load launch agent"
+    fi
+    
+    # Give the service a moment to start
+    sleep 2
+    
+    # Verify the engine is actually running
+    echo "Verifying engine startup..."
+    for i in {1..10}; do
+        if curl -s http://localhost:3080/check-health > /dev/null 2>&1; then
+            echo "✓ Engine is running and responding to health checks"
+            break
+        elif [ $i -eq 10 ]; then
+            echo "⚠ Warning: Engine may not have started properly"
+            echo "  Check logs: tail -f koneksi-engine/koneksi-engine.log"
+        else
+            echo "  Waiting for engine to start... ($i/10)"
+            sleep 2
+        fi
+    done
     
     cd ..
     
@@ -281,10 +313,11 @@ check_requirements() {
         fi
     fi
     
-    # Check for curl
+    # Check for curl (required for downloads and health checks)
     if ! command -v curl &> /dev/null; then
         echo "Error: curl is not installed."
         echo "curl should be pre-installed on macOS. Please check your system."
+        echo "curl is required for downloading binaries and verifying engine health."
         exit 1
     fi
     
