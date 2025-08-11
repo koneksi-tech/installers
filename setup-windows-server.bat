@@ -12,14 +12,16 @@ echo Please select an option:
 echo 1) Install Koneksi Engine and CLI
 echo 2) Run Koneksi Engine and CLI
 echo 3) Install and Run
-echo 4) Exit
+echo 4) Troubleshoot Engine Issues
+echo 5) Exit
 echo.
-set /p choice="Enter your choice [1-4]: "
+set /p choice="Enter your choice [1-5]: "
 
 if "%choice%"=="1" goto INSTALL
 if "%choice%"=="2" goto RUN
 if "%choice%"=="3" goto INSTALL_AND_RUN
-if "%choice%"=="4" goto EXIT
+if "%choice%"=="4" goto TROUBLESHOOT
+if "%choice%"=="5" goto EXIT
 echo Invalid option. Please try again.
 goto MAIN_MENU
 
@@ -231,23 +233,53 @@ echo Creating scheduled task for auto-startup...
 set ENGINE_PATH=%CD%\koneksi-engine\koneksi.exe
 set ENGINE_WORKDIR=%CD%\koneksi-engine
 
+echo Engine path: %ENGINE_PATH%
+echo Working directory: %ENGINE_WORKDIR%
+
+:: Verify engine binary exists and is executable
+if not exist "%ENGINE_PATH%" (
+    echo Error: Engine binary not found at %ENGINE_PATH%
+    pause
+    goto MAIN_MENU
+)
+
 :: Remove any existing task first
+echo Removing any existing scheduled task...
 schtasks /delete /tn "KoneksiEngine" /f >nul 2>&1
 
-:: Create new scheduled task
-schtasks /create /tn "KoneksiEngine" /tr "\"%ENGINE_PATH%\"" /sc onstart /ru SYSTEM /rl highest /f >nul 2>&1
-if !errorlevel!==0 (
-    echo Scheduled task created successfully
+:: Create new scheduled task with proper working directory
+echo Creating scheduled task with proper working directory...
+schtasks /create /tn "KoneksiEngine" /tr "cmd /c \"cd /d \"%ENGINE_WORKDIR%\" && koneksi.exe\"" /sc onstart /ru SYSTEM /rl highest /f >nul 2>&1
+set TASK_CREATE_RESULT=!errorlevel!
+
+if !TASK_CREATE_RESULT!==0 (
+    echo ✓ Scheduled task created successfully
 ) else (
-    echo Warning: Failed to create scheduled task
+    echo ✗ Failed to create scheduled task (Error: !TASK_CREATE_RESULT!)
+    echo Attempting alternative task creation method...
+    
+    :: Try alternative method with XML import
+    call :CREATE_TASK_XML
+    if !errorlevel! neq 0 (
+        echo Error: All task creation methods failed
+        echo Please check if you have administrator privileges
+        pause
+        goto MAIN_MENU
+    )
 )
 
 :: Start the task now
+echo Starting scheduled task...
 schtasks /run /tn "KoneksiEngine" >nul 2>&1
-if !errorlevel!==0 (
-    echo Scheduled task started successfully
+set TASK_START_RESULT=!errorlevel!
+
+if !TASK_START_RESULT!==0 (
+    echo ✓ Scheduled task started successfully
 ) else (
-    echo Warning: Failed to start scheduled task
+    echo ✗ Failed to start scheduled task (Error: !TASK_START_RESULT!)
+    echo Checking task status...
+    schtasks /query /tn "KoneksiEngine" /fo list
+    echo.
 )
 
 :: Give the service a moment to start
@@ -264,8 +296,57 @@ for /l %%i in (1,1,10) do (
     )
     echo   Waiting for engine to start... (%%i/10)
 )
+
+echo.
 echo ⚠ Warning: Engine may not have started properly
-echo   Check task status: schtasks /query /tn "KoneksiEngine"
+echo ======================================
+echo.
+echo Troubleshooting information:
+echo.
+
+:: Check if process is running
+echo 1. Checking if koneksi.exe process is running...
+tasklist /fi "imagename eq koneksi.exe" 2>nul | find /i "koneksi.exe" >nul
+if !errorlevel!==0 (
+    echo   ✓ koneksi.exe process is running
+) else (
+    echo   ✗ koneksi.exe process is NOT running
+)
+
+:: Check scheduled task status
+echo.
+echo 2. Checking scheduled task status...
+schtasks /query /tn "KoneksiEngine" /fo list | findstr /i "Status"
+if !errorlevel! neq 0 (
+    echo   ✗ Unable to query scheduled task status
+)
+
+:: Check if port 3080 is in use
+echo.
+echo 3. Checking if port 3080 is available...
+netstat -an | findstr ":3080" >nul
+if !errorlevel!==0 (
+    echo   ✓ Port 3080 is in use (good sign)
+) else (
+    echo   ✗ Port 3080 is not in use
+)
+
+:: Check if .env file exists
+echo.
+echo 4. Checking configuration files...
+if exist "koneksi-engine\.env" (
+    echo   ✓ .env configuration file exists
+) else (
+    echo   ✗ .env configuration file is missing
+)
+
+:: Suggest manual troubleshooting
+echo.
+echo Manual troubleshooting steps:
+echo   1. Check task status: schtasks /query /tn "KoneksiEngine" /fo list
+echo   2. View task history: eventvwr.msc ^(Windows Logs ^> Application^)
+echo   3. Try manual start: cd koneksi-engine ^&^& koneksi.exe
+echo   4. Check log file: type koneksi-engine\koneksi-engine.log
 
 :ENGINE_READY
 echo.
@@ -292,8 +373,181 @@ set /p RUN_NOW="Installation complete. Do you want to run the services now? (y/n
 if /i "%RUN_NOW%"=="y" goto RUN
 goto MAIN_MENU
 
+:TROUBLESHOOT
+echo.
+echo Koneksi Engine Troubleshooting
+echo ======================================
+echo.
+
+:: Check if binaries exist
+echo 1. Checking installation...
+if exist "koneksi-engine\koneksi.exe" (
+    echo   ✓ Engine binary found at koneksi-engine\koneksi.exe
+) else (
+    echo   ✗ Engine binary NOT found at koneksi-engine\koneksi.exe
+    echo   Please run installation first ^(option 1^)
+    pause
+    goto MAIN_MENU
+)
+
+if exist "koneksi-cli\koneksi.exe" (
+    echo   ✓ CLI binary found at koneksi-cli\koneksi.exe
+) else (
+    echo   ✗ CLI binary NOT found at koneksi-cli\koneksi.exe
+    echo   Please run installation first ^(option 1^)
+)
+
+:: Check configuration
+echo.
+echo 2. Checking configuration...
+if exist "koneksi-engine\.env" (
+    echo   ✓ .env configuration file exists
+    echo   Configuration contents:
+    type "koneksi-engine\.env" | findstr /v "^$"
+) else (
+    echo   ✗ .env configuration file is missing
+    echo   This file should be created during installation
+)
+
+:: Check scheduled task
+echo.
+echo 3. Checking scheduled task...
+schtasks /query /tn "KoneksiEngine" >nul 2>&1
+if !errorlevel!==0 (
+    echo   ✓ Scheduled task 'KoneksiEngine' exists
+    echo   Task details:
+    schtasks /query /tn "KoneksiEngine" /fo list | findstr /i "Status Next Task"
+) else (
+    echo   ✗ Scheduled task 'KoneksiEngine' does not exist
+    echo   Task needs to be created when running the engine
+)
+
+:: Check process
+echo.
+echo 4. Checking running processes...
+tasklist /fi "imagename eq koneksi.exe" 2>nul | find /i "koneksi.exe" >nul
+if !errorlevel!==0 (
+    echo   ✓ koneksi.exe process is currently running
+    tasklist /fi "imagename eq koneksi.exe" /fo table
+) else (
+    echo   ✗ koneksi.exe process is NOT running
+)
+
+:: Check network
+echo.
+echo 5. Checking network connectivity...
+netstat -an | findstr ":3080" >nul
+if !errorlevel!==0 (
+    echo   ✓ Port 3080 is in use
+    netstat -an | findstr ":3080"
+) else (
+    echo   ✗ Port 3080 is not in use
+)
+
+:: Health check
+echo.
+echo 6. Testing health endpoint...
+curl -s http://localhost:3080/check-health >nul 2>&1
+if !errorlevel!==0 (
+    echo   ✓ Health check successful - Engine is responding
+) else (
+    echo   ✗ Health check failed - Engine is not responding
+)
+
+:: Try manual start
+echo.
+echo 7. Manual engine test...
+set /p MANUAL_TEST="Do you want to try starting the engine manually for testing? (y/n): "
+if /i "%MANUAL_TEST%"=="y" (
+    echo.
+    echo Starting engine manually in current window...
+    echo Press Ctrl+C to stop the engine when done testing
+    echo.
+    cd koneksi-engine
+    koneksi.exe
+    cd ..
+)
+
+echo.
+echo Troubleshooting complete.
+echo.
+echo Common solutions:
+echo   - Ensure you're running as Administrator
+echo   - Check Windows Firewall settings for port 3080
+echo   - Verify antivirus isn't blocking koneksi.exe
+echo   - Check Windows Event Viewer for error messages
+echo   - Try reinstalling ^(option 1^)
+echo.
+pause
+goto MAIN_MENU
+
 :EXIT
 echo Exiting...
+exit /b 0
+
+:CREATE_TASK_XML
+echo Creating scheduled task using XML method...
+set TASK_XML_FILE=%TEMP%\KoneksiEngine.xml
+
+:: Create XML task definition
+(
+echo ^<?xml version="1.0" encoding="UTF-16"?^>
+echo ^<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"^>
+echo   ^<RegistrationInfo^>
+echo     ^<Description^>Koneksi Engine Service^</Description^>
+echo   ^</RegistrationInfo^>
+echo   ^<Triggers^>
+echo     ^<BootTrigger^>
+echo       ^<Enabled^>true^</Enabled^>
+echo     ^</BootTrigger^>
+echo   ^</Triggers^>
+echo   ^<Principals^>
+echo     ^<Principal id="Author"^>
+echo       ^<UserId^>S-1-5-18^</UserId^>
+echo       ^<RunLevel^>HighestAvailable^</RunLevel^>
+echo     ^</Principal^>
+echo   ^</Principals^>
+echo   ^<Settings^>
+echo     ^<MultipleInstancesPolicy^>IgnoreNew^</MultipleInstancesPolicy^>
+echo     ^<DisallowStartIfOnBatteries^>false^</DisallowStartIfOnBatteries^>
+echo     ^<StopIfGoingOnBatteries^>false^</StopIfGoingOnBatteries^>
+echo     ^<AllowHardTerminate^>true^</AllowHardTerminate^>
+echo     ^<StartWhenAvailable^>true^</StartWhenAvailable^>
+echo     ^<RunOnlyIfNetworkAvailable^>false^</RunOnlyIfNetworkAvailable^>
+echo     ^<AllowStartOnDemand^>true^</AllowStartOnDemand^>
+echo     ^<Enabled^>true^</Enabled^>
+echo     ^<Hidden^>false^</Hidden^>
+echo     ^<RunOnlyIfIdle^>false^</RunOnlyIfIdle^>
+echo     ^<WakeToRun^>false^</WakeToRun^>
+echo     ^<ExecutionTimeLimit^>PT0S^</ExecutionTimeLimit^>
+echo     ^<Priority^>7^</Priority^>
+echo     ^<RestartOnFailure^>
+echo       ^<Interval^>PT1M^</Interval^>
+echo       ^<Count^>3^</Count^>
+echo     ^</RestartOnFailure^>
+echo   ^</Settings^>
+echo   ^<Actions Context="Author"^>
+echo     ^<Exec^>
+echo       ^<Command^>%ENGINE_PATH%^</Command^>
+echo       ^<WorkingDirectory^>%ENGINE_WORKDIR%^</WorkingDirectory^>
+echo     ^</Exec^>
+echo   ^</Actions^>
+echo ^</Task^>
+) > "%TASK_XML_FILE%"
+
+:: Import the XML task
+schtasks /create /xml "%TASK_XML_FILE%" /tn "KoneksiEngine" /f >nul 2>&1
+set XML_RESULT=!errorlevel!
+
+:: Clean up temporary file
+del "%TASK_XML_FILE%" >nul 2>&1
+
+if !XML_RESULT!==0 (
+    echo ✓ Scheduled task created successfully using XML method
+) else (
+    echo ✗ Failed to create scheduled task using XML method
+    exit /b 1
+)
 exit /b 0
 
 :CHECK_REQUIREMENTS
