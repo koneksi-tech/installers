@@ -277,10 +277,9 @@ function Start-Koneksi {
             
             $enginePath = Join-Path (Get-Location) "koneksi-engine\koneksi.exe"
             $engineWorkDir = Join-Path (Get-Location) "koneksi-engine"
-            $logPath = Join-Path (Get-Location) "koneksi-engine\koneksi-engine.log"
             
-            # Start engine with logging
-            $engineProcess = Start-Process -FilePath $enginePath -WorkingDirectory $engineWorkDir -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError $logPath -PassThru
+            # Start engine with logging using cmd redirection
+            $engineProcess = Start-Process cmd -ArgumentList "/c", "cd /d `"$engineWorkDir`" && koneksi.exe > koneksi-engine.log 2>&1" -WindowStyle Hidden -PassThru
             Write-Host "Engine started with PID: $($engineProcess.Id)" -ForegroundColor Green
             Write-Host "Engine logs: koneksi-engine\koneksi-engine.log" -ForegroundColor Yellow
             
