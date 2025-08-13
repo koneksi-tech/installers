@@ -577,12 +577,12 @@ function Main {
             }
             
             "4" {
-                Configure-WindowsService
+                Write-Host "Exiting..." -ForegroundColor Yellow
+                exit 0
             }
             
             "5" {
-                Write-Host "Exiting..." -ForegroundColor Yellow
-                exit 0
+                Configure-WindowsService
             }
             
             default {
