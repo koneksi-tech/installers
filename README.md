@@ -253,8 +253,8 @@ Please ensure the engine service is running and accessible.
 lsof -i :3080  # Linux/macOS
 netstat -ano | findstr :3080  # Windows
 ```
-- If there's no task/service running, we need to run it using Option 2 in [Installation Methods](#installation-methods)
-
+- If there's no task/service running, we need to run the setup CLI setup again and choose Option 2.
+  
 ---
 
 ## Support & Resources
