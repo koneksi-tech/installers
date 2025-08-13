@@ -253,7 +253,6 @@ taskkill /PID <PID> /F  # Windows
 - Ensure network connectivity
 
 **4. Engine connection failed**
--
 ```
 request failed: Get "http://localhost:3080/check-health": dial tcp [::1]:3080: connectex: No connection could be made because the target machine actively refused it..
 Please ensure the engine service is running and accessible.
