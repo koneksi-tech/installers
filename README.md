@@ -4,12 +4,10 @@
 
 - [System Requirements](#system-requirements)
 - [Installation Methods](#installation-methods)
-  - [Amazon Linux](#amazon-linux)
+  - [Linux](#linux)
   - [macOS](#macos)
-  - [Windows Server 2025](#windows-server-2025)
+  - [Windows](#windows)
 - [Developer Guide](#developer-guide)
-  - [CLI Command Examples](#cli-command-examples)
-- [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -34,25 +32,26 @@
 
 ## Installation Methods
 
-### Amazon Linux
+### Linux
 
 1. **Download the setup script:**
 
    ```bash
-   wget https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-amazon-linux.sh
-   chmod +x setup-amazon-linux.sh
+   wget https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-linux.sh
+   chmod +x setup-linux.sh
    ```
+   or get directly from https://github.com/koneksi-tech/koneksi-cli-setup
 
 2. **Run the installer:**
 
    ```bash
-   ./setup-amazon-linux.sh
+   ./setup-linux.sh
    ```
 
 3. **Select from menu:**
-   - Option 1: Install only
+   - Option 1: Install Koneksi Engine & CLI
    - Option 2: Run existing installation
-   - Option 3: Install and run
+   - Option 3: Install both and run (Recommended for initial installation)
 
 ### macOS
 
@@ -62,6 +61,7 @@
    curl -O https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-macos.sh
    chmod +x setup-macos.sh
    ```
+   or get directly from https://github.com/koneksi-tech/koneksi-cli-setup
 
 2. **Run the installer:**
 
@@ -70,45 +70,45 @@
    ```
 
 3. **Select from menu:**
-   - Option 1: Install only
+   - Option 1: Install Koneksi Engine & CLI
    - Option 2: Run existing installation
-   - Option 3: Install and run
+   - Option 3: Install both and run (Recommended for initial installation)
 
-### Windows Server 2025
+### Windows
 
 1. **Download the setup script:**
 
    ```cmd
-   curl -O https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-windows-server.bat
+   // curl
+   curl -O https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-windows.ps1
+
+   // powershell
+   Invoke-WebRequest -Uri https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-windows.ps1 -OutFile setup-windows.ps1
    ```
+   or get directly from https://github.com/koneksi-tech/koneksi-cli-setup
 
 2. **Run as Administrator (recommended):**
 
    ```cmd
-   setup-windows-server.bat
+   ./setup-windows.ps1
    ```
 
 3. **Installation options:**
-   - Standard installation
-   - Windows Service configuration (requires admin)
-   - Scheduled task setup
+   - Option 1: Install Koneksi Engine & CLI
+   - Option 2: Run existing installation
+   - Option 3: Install both and run (Recommended for initial installation)
 
 ---
 
 ## Developer Guide
 
-### CLI Command Examples
-
-The Koneksi CLI provides various commands for interacting with the engine and managing operations.
+The Koneksi CLI provides various commands for interacting with the engine and managing operations. You can find all CLI commands here: [Koneksi CLI Guide](https://koneksi-1.gitbook.io/docs/command-line-tools/unified-cli/command-guides)
 
 #### Basic Commands
 
 ```bash
 # Check version
-koneksi --version
-
-# Display help
-koneksi --help
+koneksi version
 
 # Health check
 koneksi health
@@ -118,24 +118,26 @@ koneksi health
 
 ```bash
 # Login with credentials
-koneksi auth login --password yourpassword --email user@example.com
+koneksi auth login --email user@example.com --password yourpassword 
 
 # Logout
 koneksi auth revoke-token --token access_token --email user@example.com
 ```
 
-#### Backup Operations
+### Backup & Recovery Scenario
 
+#### Backup Operations
+1. File Upload
 ```bash
 # Upload file
 koneksi file upload --file-path /path/to/file.txt --email user@example.com
-
+```
+2. Folder Upload
+```bash
 # Upload directory
 koneksi directory upload --path /path/to/directory --email user@example.com
 ```
-
-#### Real-time Backup Operations
-
+3. Real-time backups
 ```bash
 # Add realtime backup location
 koneksi realtime-backup path add --path /path/to/directory --email user@example.com
@@ -149,7 +151,7 @@ koneksi realtime-backup realtime start --email user@example.com
 # Start watcher to detect backup location changes
 koneksi realtime-backup watcher start --email user@example.com
 
-# List realtime backup queue
+# List realtime backup queue to check in-progress / pending uploads
 koneksi realtime-backup queues read --email user@example.com
 
 # Stop watcher to disable backup location changes detection
@@ -172,82 +174,37 @@ koneksi directory read --directory-id 6899f1bbdafb251035d62d67 --email user@exam
 #### Recovery Operations
 
 ```bash
-# Create recovery request (will start the initial recovery queue process)
+# Create recovery request (it will start the initial recovery process)
 koneksi recovery request --path /path/to/recovery-path --scope full --email user@example.com
 
-# List recovery requests
+# List recovery requests (view recovery requests history)
 koneksi recovery list --email user@example.com
 
-# List recovery request queue items
+# List recovery request queue items (view all pending files to recover)
 koneksi recovery list-queue --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
 
-# Process recovery queue (for retry)
+# Process recovery queue (if recovery fails, we can use this to retry)
 koneksi recovery process-queue --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
 
-# Delete recovery request (including the recovery queue items)
+# Delete recovery request (force stop ongoing recovery or remove recovery request from history)
 koneksi recovery delete --recovery-id 6899e7cedafb251035d62d66 --email user@example.com
 
 ```
 
-**Manual Start both services:**
+### Engine Service Monitoring
 
-```bash
-# Linux/macOS
-cd koneksi-engine && ./koneksi &
-cd ../koneksi-cli && ./koneksi &
-
-# Windows
-cd koneksi-engine && start koneksi.exe
-cd ..\koneksi-cli && start koneksi.exe
-```
-
-### Production Deployment
-
-**Linux/macOS with systemd:**
-
-```bash
-# Create service file
-sudo nano /etc/systemd/system/koneksi-engine.service
-
-# Add content:
-[Unit]
-Description=Koneksi Engine Service
-After=network.target
-
-[Service]
-Type=simple
-User=koneksi
-WorkingDirectory=/opt/koneksi/koneksi-engine
-ExecStart=/opt/koneksi/koneksi-engine/koneksi
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-
-# Enable and start
-sudo systemctl enable koneksi-engine
-sudo systemctl start koneksi-engine
-```
-
-**Windows Service:**
-
-```cmd
-# Run as Administrator
-sc create KoneksiEngine binPath= "C:\koneksi\koneksi-engine\koneksi.exe" start= auto
-sc start KoneksiEngine
-```
-
-### Monitoring
-
-**View logs:**
+**Monitor logs:**
 
 ```bash
 # Linux/macOS
 tail -f koneksi-engine/koneksi-engine.log
-tail -f koneksi-cli/koneksi-cli.log
 
 # Windows
+//cmd
 type koneksi-engine\koneksi-engine.log
+
+// powershell
+Get-Content .\koneksi-engine\koneksi-engine.log -Wait
 ```
 
 **Check process status:**
@@ -257,34 +214,14 @@ type koneksi-engine\koneksi-engine.log
 ps aux | grep koneksi
 
 # Windows
-tasklist | findstr koneksi
+// cmd
+tasklist | findstr /i koneksi
+
+// powershell
+Get-Process | Where-Object { $_.Name -like "*koneksi*" } | Select-Object Name, Id, CPU, WorkingSet
 ```
 
 ---
-
-## Configuration
-
-### Environment Variables (.env)
-
-Located in `koneksi-engine/.env`:
-
-```env
-# Core Settings
-APP_KEY=1oUPOOVVhRoN3SwIdMG4VP6iABNOTmQE     # Authentication key
-MODE=release                                 # release or debug
-API_URL=https://uat.koneksi.co.kr            # API endpoint
-
-# Performance Tuning
-RETRY_COUNT=5                                # Request retry attempts
-UPLOAD_CONCURRENCY=1                         # Parallel uploads
-UPLOAD_DELAY=100ms                           # Delay between uploads
-
-# Intervals
-TOKEN_CHECK_INTERVAL=60s                     # Token validation frequency
-BACKUP_TASK_COOLDOWN=60s                     # Backup operation cooldown
-QUEUE_CHECK_INTERVAL=2s                      # Queue polling interval
-PAUSE_TIMEOUT=30s                            # Pause operation timeout
-```
 
 ## Troubleshooting
 
@@ -301,8 +238,8 @@ chmod +x koneksi-cli/koneksi
 
 ```bash
 # Find process using port
-lsof -i :8080  # Linux/macOS
-netstat -ano | findstr :8080  # Windows
+lsof -i :3080  # Linux/macOS
+netstat -ano | findstr :3080  # Windows
 
 # Kill process
 kill -9 <PID>  # Linux/macOS
@@ -315,15 +252,19 @@ taskkill /PID <PID> /F  # Windows
 - Verify API_URL in .env file
 - Ensure network connectivity
 
-**4. Service Won't Start (Windows)**
-
-```cmd
-# Check Windows Event Log
-eventvwr.msc
-
-# Run in console mode for debugging
-koneksi-engine\koneksi.exe
+**4. Engine connection failed**
+-
 ```
+request failed: Get "http://localhost:3080/check-health": dial tcp [::1]:3080: connectex: No connection could be made because the target machine actively refused it..
+Please ensure the engine service is running and accessible.
+```
+
+- Make sure Engine service is running by checking:
+```
+lsof -i :3080  # Linux/macOS
+netstat -ano | findstr :3080  # Windows
+```
+- If there's no task/service running, we need to run it using Option 2 in [Installation Methods](#installation-methods)
 
 ---
 
