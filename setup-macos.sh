@@ -3,7 +3,7 @@
 set -e
 
 echo "======================================"
-echo "Koneksi Setup for macOS"
+echo "Koneksi CLI Setup for macOS"
 echo "======================================"
 
 # Function to display menu
@@ -12,7 +12,7 @@ show_menu() {
     echo "Please select an option:"
     echo "1) Install Koneksi Engine and CLI"
     echo "2) Run Koneksi Engine and CLI"
-    echo "3) Install and Run"
+    echo "3) Install Both and Run"
     echo "4) Exit"
     echo ""
     read -p "Enter your choice [1-4]: " choice
@@ -95,12 +95,12 @@ install_koneksi() {
         # Create the .env file for the Koneksi Engine binary
         echo "Creating .env configuration file..."
         cat > .env << EOF
-APP_KEY=1oUPOOVVhRoN3SwIdMG4VP6iABNOTmQE     # Secret key for internal authentication or encryption
+APP_KEY=pH0s9fH2ZecZlZcxnZK44wTVkiGPs5vN     # Secret key for internal authentication or encryption
 MODE=release                                 # Use 'debug' to display verbose logs
 API_URL=https://uat.koneksi.co.kr            # URL of the gateway or central API the engine will communicate with
 RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
-UPLOAD_CONCURRENCY=1                         # Number of concurrent uploads
-UPLOAD_DELAY=100ms                           # Delay between uploads in milliseconds
+UPLOAD_CONCURRENCY=5                         # Number of concurrent uploads
+UPLOAD_DELAY=500ms                           # Delay between uploads in milliseconds
 TOKEN_CHECK_INTERVAL=60s                     # Interval for checking if a token is still valid
 BACKUP_TASK_COOLDOWN=60s                     # Cooldown period between backup operations
 QUEUE_CHECK_INTERVAL=2s                      # Interval for checking processing queues for new tasks

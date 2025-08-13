@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ======================================
-echo Koneksi Setup for Windows Server 2025
+echo Koneksi Setup for Windows
 echo ======================================
 echo.
 
@@ -11,7 +11,7 @@ echo.
 echo Please select an option:
 echo 1) Install Koneksi Engine and CLI
 echo 2) Run Koneksi Engine and CLI
-echo 3) Install and Run
+echo 3) Install Both and Run
 echo 4) Exit
 echo.
 set /p choice="Enter your choice [1-4]: "
@@ -98,12 +98,12 @@ if exist "%ENGINE_FINAL_NAME%" (
 :: Create .env file
 echo Creating .env configuration file...
 (
-echo APP_KEY=1oUPOOVVhRoN3SwIdMG4VP6iABNOTmQE     # Secret key for internal authentication or encryption
+echo APP_KEY=pH0s9fH2ZecZlZcxnZK44wTVkiGPs5vN     # Secret key for internal authentication or encryption
 echo MODE=release                                 # Use 'debug' to display verbose logs
 echo API_URL=https://uat.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
 echo RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
-echo UPLOAD_CONCURRENCY=1                         # Number of concurrent uploads
-echo UPLOAD_DELAY=100ms                           # Delay between uploads in milliseconds
+echo UPLOAD_CONCURRENCY=5                         # Number of concurrent uploads
+echo UPLOAD_DELAY=500ms                           # Delay between uploads in milliseconds
 echo TOKEN_CHECK_INTERVAL=60s                     # Interval for checking if a token is still valid
 echo BACKUP_TASK_COOLDOWN=60s                     # Cooldown period between backup operations
 echo QUEUE_CHECK_INTERVAL=2s                      # Interval for checking processing queues for new tasks
@@ -282,11 +282,29 @@ echo   type logs\cli.log
 pause
 goto MAIN_MENU
 
+:RUN_AUTO
+echo Starting Koneksi Engine in background...
+cd koneksi-engine
+start /b koneksi.exe
+cd ..
+
+timeout /t 2 /nobreak >nul
+
+echo Starting Koneksi CLI in new terminal with health check...
+start "Koneksi CLI" /D "%CD%\koneksi-cli" cmd /k "echo Running Koneksi CLI health check... && koneksi health"
+
+echo.
+echo Engine is running in background.
+echo CLI terminal opened with health check command.
+echo To stop the engine, use Task Manager.
+pause
+goto MAIN_MENU
+
 :INSTALL_AND_RUN
 call :INSTALL
 echo.
 set /p RUN_NOW="Installation complete. Do you want to run the services now? (y/n): "
-if /i "%RUN_NOW%"=="y" goto RUN
+if /i "%RUN_NOW%"=="y" goto RUN_AUTO
 goto MAIN_MENU
 
 :EXIT

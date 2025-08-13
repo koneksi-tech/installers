@@ -1,4 +1,4 @@
-# Koneksi Setup Script for Windows Server 2025
+# Koneksi Setup Script for Windows
 # Requires PowerShell 5.1 or later
 
 param(
@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = 'SilentlyContinue'
 
 Write-Host "======================================" -ForegroundColor Cyan
-Write-Host "Koneksi Setup for Windows Server 2025" -ForegroundColor Cyan
+Write-Host "Koneksi Setup for Windows" -ForegroundColor Cyan
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -21,11 +21,10 @@ function Show-Menu {
     Write-Host "Please select an option:" -ForegroundColor Yellow
     Write-Host "1) Install Koneksi Engine and CLI"
     Write-Host "2) Run Koneksi Engine and CLI"
-    Write-Host "3) Install and Run"
-    Write-Host "4) Configure Windows Service (requires admin)"
-    Write-Host "5) Exit"
+    Write-Host "3) Install Both and Run"
+    Write-Host "4) Exit"
     Write-Host ""
-    $choice = Read-Host "Enter your choice [1-5]"
+    $choice = Read-Host "Enter your choice [1-4]"
     return $choice
 }
 
@@ -103,12 +102,12 @@ function Install-Koneksi {
             # Create .env file
             Write-Host "Creating .env configuration file..."
             $envContent = @"
-APP_KEY=1oUPOOVVhRoN3SwIdMG4VP6iABNOTmQE     # Secret key for internal authentication or encryption
+APP_KEY=pH0s9fH2ZecZlZcxnZK44wTVkiGPs5vN     # Secret key for internal authentication or encryption
 MODE=release                                 # Use 'debug' to display verbose logs
 API_URL=https://uat.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
 RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
-UPLOAD_CONCURRENCY=1                         # Number of concurrent uploads
-UPLOAD_DELAY=100ms                           # Delay between uploads in milliseconds
+UPLOAD_CONCURRENCY=5                         # Number of concurrent uploads
+UPLOAD_DELAY=500ms                           # Delay between uploads in milliseconds
 TOKEN_CHECK_INTERVAL=60s                     # Interval for checking if a token is still valid
 BACKUP_TASK_COOLDOWN=60s                     # Cooldown period between backup operations
 QUEUE_CHECK_INTERVAL=2s                      # Interval for checking processing queues for new tasks
@@ -221,6 +220,10 @@ PAUSE_TIMEOUT=30s                            # Timeout duration for pause operat
 
 # Function to run Koneksi
 function Start-Koneksi {
+    param(
+        [switch]$AutoRun
+    )
+    
     Write-Host ""
     Write-Host "Starting Koneksi services..." -ForegroundColor Green
     Write-Host "======================================" -ForegroundColor Green
@@ -238,15 +241,20 @@ function Start-Koneksi {
         return
     }
     
-    Write-Host ""
-    Write-Host "Select how to run the services:" -ForegroundColor Yellow
-    Write-Host "1) Run both in separate console windows"
-    Write-Host "2) Run both in background (hidden)"
-    Write-Host "3) Run in Windows Terminal tabs (if installed)"
-    Write-Host "4) Run as scheduled tasks"
-    Write-Host "5) Cancel"
-    Write-Host ""
-    $runMode = Read-Host "Enter your choice [1-5]"
+    # If AutoRun is specified, automatically choose option 2
+    if ($AutoRun) {
+        $runMode = "2"
+    } else {
+        Write-Host ""
+        Write-Host "Select how to run the services:" -ForegroundColor Yellow
+        Write-Host "1) Run both in separate console windows"
+        Write-Host "2) Run both in background (hidden)"
+        Write-Host "3) Run in Windows Terminal tabs (if installed)"
+        Write-Host "4) Run as scheduled tasks"
+        Write-Host "5) Cancel"
+        Write-Host ""
+        $runMode = Read-Host "Enter your choice [1-5]"
+    }
     
     switch ($runMode) {
         "1" {
@@ -273,16 +281,15 @@ function Start-Koneksi {
             
             Start-Sleep -Seconds 2
             
-            Write-Host "Starting Koneksi CLI in background..."
-            $cliPath = Join-Path (Get-Location) "koneksi-cli\koneksi.exe"
-            $cliWorkDir = Join-Path (Get-Location) "koneksi-cli"
-            $cliProcess = Start-Process -FilePath $cliPath -WorkingDirectory $cliWorkDir -WindowStyle Hidden -PassThru
-            Write-Host "CLI started with PID: $($cliProcess.Id)" -ForegroundColor Green
+            Write-Host "Starting Koneksi CLI in new terminal with health check..."
+            $cliPath = Join-Path (Get-Location) "koneksi-cli"
+            Start-Process cmd -ArgumentList "/k", "cd /d `"$cliPath`" && echo Running Koneksi CLI health check... && koneksi health" -WindowStyle Normal
             
             Write-Host ""
-            Write-Host "Both services are running in background." -ForegroundColor Green
-            Write-Host "To stop the services, use Task Manager or run:" -ForegroundColor Yellow
-            Write-Host "  Stop-Process -Id $($engineProcess.Id), $($cliProcess.Id)" -ForegroundColor White
+            Write-Host "Engine is running in background." -ForegroundColor Green
+            Write-Host "CLI terminal opened with health check command." -ForegroundColor Green
+            Write-Host "To stop the engine, use Task Manager or run:" -ForegroundColor Yellow
+            Write-Host "  Stop-Process -Id $($engineProcess.Id)" -ForegroundColor White
         }
         
         "3" {
@@ -540,7 +547,7 @@ function Main {
         Write-Host "Running in silent mode..." -ForegroundColor Yellow
         $result = Install-Koneksi
         if ($result) {
-            Start-Koneksi
+            Start-Koneksi -AutoRun
         }
         return
     }
@@ -564,7 +571,7 @@ function Main {
                     Write-Host ""
                     $runNow = Read-Host "Installation complete. Do you want to run the services now? (y/n)"
                     if ($runNow -eq 'y') {
-                        Start-Koneksi
+                        Start-Koneksi -AutoRun
                     }
                 }
             }
