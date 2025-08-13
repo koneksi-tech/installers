@@ -273,11 +273,16 @@ function Start-Koneksi {
         }
         
         "2" {
-            Write-Host "Starting Koneksi Engine in background..."
+            Write-Host "Starting Koneksi Engine in background with logging..."
+            
             $enginePath = Join-Path (Get-Location) "koneksi-engine\koneksi.exe"
             $engineWorkDir = Join-Path (Get-Location) "koneksi-engine"
-            $engineProcess = Start-Process -FilePath $enginePath -WorkingDirectory $engineWorkDir -WindowStyle Hidden -PassThru
+            $logPath = Join-Path (Get-Location) "koneksi-engine\koneksi-engine.log"
+            
+            # Start engine with logging
+            $engineProcess = Start-Process -FilePath $enginePath -WorkingDirectory $engineWorkDir -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError $logPath -PassThru
             Write-Host "Engine started with PID: $($engineProcess.Id)" -ForegroundColor Green
+            Write-Host "Engine logs: koneksi-engine\koneksi-engine.log" -ForegroundColor Yellow
             
             Start-Sleep -Seconds 2
             
@@ -286,10 +291,12 @@ function Start-Koneksi {
             Start-Process cmd -ArgumentList "/k", "cd /d `"$cliPath`" && echo Running Koneksi CLI health check... && koneksi health" -WindowStyle Normal
             
             Write-Host ""
-            Write-Host "Engine is running in background." -ForegroundColor Green
+            Write-Host "Engine is running in background with logging." -ForegroundColor Green
             Write-Host "CLI terminal opened with health check command." -ForegroundColor Green
             Write-Host "To stop the engine, use Task Manager or run:" -ForegroundColor Yellow
             Write-Host "  Stop-Process -Id $($engineProcess.Id)" -ForegroundColor White
+            Write-Host "To view engine logs:" -ForegroundColor Yellow
+            Write-Host "  Get-Content .\koneksi-engine\koneksi-engine.log -Wait" -ForegroundColor White
         }
         
         "3" {

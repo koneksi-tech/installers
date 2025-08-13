@@ -283,10 +283,10 @@ pause
 goto MAIN_MENU
 
 :RUN_AUTO
-echo Starting Koneksi Engine in background...
-cd koneksi-engine
-start /b koneksi.exe
-cd ..
+echo Starting Koneksi Engine in background with logging...
+
+echo Starting Koneksi Engine with logging...
+start "Koneksi Engine" /D "%CD%\koneksi-engine" /MIN cmd /c "koneksi.exe > koneksi-engine.log 2>&1"
 
 timeout /t 2 /nobreak >nul
 
@@ -294,9 +294,11 @@ echo Starting Koneksi CLI in new terminal with health check...
 start "Koneksi CLI" /D "%CD%\koneksi-cli" cmd /k "echo Running Koneksi CLI health check... && koneksi health"
 
 echo.
-echo Engine is running in background.
+echo Engine is running in background with logging.
 echo CLI terminal opened with health check command.
+echo Engine logs: koneksi-engine\koneksi-engine.log
 echo To stop the engine, use Task Manager.
+echo To view logs in real-time, use: type koneksi-engine\koneksi-engine.log
 pause
 goto MAIN_MENU
 
