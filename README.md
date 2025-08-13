@@ -48,11 +48,6 @@
    ./setup-linux.sh
    ```
 
-3. **Select from menu:**
-   - Option 1: Install Koneksi Engine & CLI
-   - Option 2: Run existing installation
-   - Option 3: Install both and run (Recommended for initial installation)
-
 ### macOS
 
 1. **Download the setup script:**
@@ -68,11 +63,6 @@
    ```bash
    ./setup-macos.sh
    ```
-
-3. **Select from menu:**
-   - Option 1: Install Koneksi Engine & CLI
-   - Option 2: Run existing installation
-   - Option 3: Install both and run (Recommended for initial installation)
 
 ### Windows
 
@@ -93,11 +83,11 @@
    ./setup-windows.ps1
    ```
 
-3. **Installation options:**
+### Installation Options
    - Option 1: Install Koneksi Engine & CLI
    - Option 2: Run existing installation
    - Option 3: Install both and run (Recommended for initial installation)
-
+   - Option 4: Exit
 ---
 
 ## Developer Guide
