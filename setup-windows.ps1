@@ -242,20 +242,8 @@ function Start-Koneksi {
         return
     }
     
-    # If AutoRun is specified, automatically choose option 2
-    if ($AutoRun) {
-        $runMode = "2"
-    } else {
-        Write-Host ""
-        Write-Host "Select how to run the services:" -ForegroundColor Yellow
-        Write-Host "1) Run both in separate console windows"
-        Write-Host "2) Run both in background (hidden)"
-        Write-Host "3) Run in Windows Terminal tabs (if installed)"
-        Write-Host "4) Run as scheduled tasks"
-        Write-Host "5) Cancel"
-        Write-Host ""
-        $runMode = Read-Host "Enter your choice [1-5]"
-    }
+    # Automatically choose option 2 (background execution) for both AutoRun and regular option 2
+    $runMode = "2"
     
     switch ($runMode) {
         "1" {
