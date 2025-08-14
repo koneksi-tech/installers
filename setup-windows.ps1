@@ -106,7 +106,8 @@ APP_KEY=pH0s9fH2ZecZlZcxnZK44wTVkiGPs5vN     # Secret key for internal authentic
 MODE=release                                 # Use 'debug' to display verbose logs
 API_URL=https://uat.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
 RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
-UPLOAD_CONCURRENCY=5                         # Number of concurrent uploads
+MAX_UPLOAD_FILE_SIZE=10                      # Unit of GB (ex. 1 = 1GB, 10 = 10GB) Default is 10GB
+UPLOAD_CONCURRENCY=3                         # Number of concurrent uploads
 UPLOAD_DELAY=500ms                           # Delay between uploads in milliseconds
 TOKEN_CHECK_INTERVAL=60s                     # Interval for checking if a token is still valid
 BACKUP_TASK_COOLDOWN=60s                     # Cooldown period between backup operations
