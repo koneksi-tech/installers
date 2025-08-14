@@ -64,7 +64,7 @@
    ./setup-macos.sh
    ```
 
-### Windows
+### Windows (using powershell)
 
 1. **Download the setup script:**
 
