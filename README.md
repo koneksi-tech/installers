@@ -68,18 +68,15 @@
 
 1. **Download the setup script:**
 
-   ```cmd
-   // curl
-   curl -O https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-windows.ps1
-
-   // powershell
+   ```powershell
    Invoke-WebRequest -Uri https://raw.githubusercontent.com/koneksi-tech/koneksi-cli-setup/main/setup-windows.ps1 -OutFile setup-windows.ps1
    ```
    or get directly from https://github.com/koneksi-tech/koneksi-cli-setup
 
 2. **Run as Administrator (recommended):**
 
-   ```cmd
+   ```powershell
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
    ./setup-windows.ps1
    ```
 
