@@ -108,7 +108,7 @@ koneksi health
 koneksi auth login --email user@example.com --password yourpassword 
 
 # Logout
-koneksi auth revoke-token --token access_token --email user@example.com
+koneksi auth logout --email user@example.com
 ```
 
 ### Backup & Recovery Scenario
