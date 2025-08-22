@@ -100,15 +100,12 @@ echo Creating .env configuration file...
 (
 echo APP_KEY=pH0s9fH2ZecZlZcxnZK44wTVkiGPs5vN     # Secret key for internal authentication or encryption
 echo MODE=release                                 # Use 'debug' to display verbose logs
-echo API_URL=https://uat.koneksi.co.kr        # URL of the gateway or central API the engine will communicate with
+echo API_URL=https://uat.koneksi.co.kr            # URL of the central API the engine will communicate with
 echo RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
 echo MAX_UPLOAD_FILE_SIZE=10                      # Unit of GB (ex. 1 = 1GB, 10 = 10GB) Default is 10GB
-echo UPLOAD_CONCURRENCY=3                         # Number of concurrent uploads
-echo UPLOAD_DELAY=500ms                           # Delay between uploads in milliseconds
-echo TOKEN_CHECK_INTERVAL=60s                     # Interval for checking if a token is still valid
-echo BACKUP_TASK_COOLDOWN=60s                     # Cooldown period between backup operations
-echo QUEUE_CHECK_INTERVAL=2s                      # Interval for checking processing queues for new tasks
-echo PAUSE_TIMEOUT=30s                            # Timeout duration for pause operations in the backup queue table
+echo CONCURRENT_WORKERS=3                         # Number of concurrent uploads
+echo WORKER_DELAY=0ms                             # Delay between uploads in milliseconds
+echo PAUSE_TIMEOUT=30s                            # Timeout duration for pause operations in the queue tables
 ) > .env
 
 :: Download Engine binary

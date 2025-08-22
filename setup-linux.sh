@@ -79,7 +79,7 @@ install_koneksi() {
             rm -f "$ENGINE_FINAL_NAME"
         fi
     fi
-    
+
     if [ ! -f "$ENGINE_FINAL_NAME" ]; then
         # Create the .env file for the Koneksi Engine binary
         echo "Creating .env configuration file..."
@@ -89,12 +89,9 @@ MODE=release                                 # Use 'debug' to display verbose lo
 API_URL=https://uat.koneksi.co.kr            # URL of the gateway or central API the engine will communicate with
 RETRY_COUNT=5                                # Number of retry attempts for failed requests or operations
 MAX_UPLOAD_FILE_SIZE=10                      # Unit of GB (ex. 1 = 1GB, 10 = 10GB) Default is 10GB
-UPLOAD_CONCURRENCY=3                         # Number of concurrent uploads
-UPLOAD_DELAY=500ms                           # Delay between uploads in milliseconds
-TOKEN_CHECK_INTERVAL=60s                     # Interval for checking if a token is still valid
-BACKUP_TASK_COOLDOWN=60s                     # Cooldown period between backup operations
-QUEUE_CHECK_INTERVAL=2s                      # Interval for checking processing queues for new tasks
-PAUSE_TIMEOUT=30s                            # Timeout duration for pause operations in the backup queue table
+CONCURRENT_WORKERS=3                         # Number of concurrent uploads
+WORKER_DELAY=0ms                           # Delay between uploads in milliseconds
+PAUSE_TIMEOUT=30s                            # Timeout duration for pause operations in the queue tables
 EOF
         
         echo "Downloading Koneksi Engine binary..."
